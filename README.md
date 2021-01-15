@@ -282,7 +282,7 @@ parsimonious of the two.
 # Fit the best model to all of the data
 best <- Arima(price, order=c(0,1,1), seasonal=c(0,1,1))
 
-# List the forecast
+# Print the forecast
 forecast(best,h=12)
 ```
 
