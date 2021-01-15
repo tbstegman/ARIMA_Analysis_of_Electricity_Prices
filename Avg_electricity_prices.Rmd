@@ -1,0 +1,151 @@
+---
+title: "ARIMA Analysis of Monthly Average Retail Electricity Prices"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project Description
+
+The purpose of this projects is to explore the use of Autoregressive Integrated Moving Average (ARIMA) models to forecast the monthly average electricity prices for the Pacific Contiguous Region.
+
+## Load the tidyverse and forecast libraries
+
+```{r, message=FALSE}
+library(tidyverse)
+library(forecast)
+```
+
+## Read in the monthly average electricity data for the Pacific Contiguous Region (cents per kilawatthour)
+
+The data was downloaded from the [U.S. Energy Information Administration website](https://www.eia.gov/electricity/data/browser/#/topic/7?agg=0,1&geo=01&endsec=vg&linechart=ELEC.PRICE.PCC-ALL.M&columnchart=ELEC.PRICE.PCC-ALL.M&map=ELEC.PRICE.PCC-ALL.M&freq=M&ctype=linechart&ltype=pin&rtype=s&pin=&rse=0&maptype=0`) for the time period of Jan-2001 through Oct-2020.  However, only data through Dec-2019 was used since the 2020 data was not considered final at the time of this analysis.
+
+```{r, message=FALSE}
+series <- read_csv("https://raw.githubusercontent.com/tbstegman/ARIMA_Analysis_of_Electricity_Prices/main/Average_retail_price_of_electricity_monthly.csv",skip=4)
+```
+
+## Perform some basic transformations and plot the data
+
+```{r tsplot, message=FALSE}
+# Rename the variables
+names(series) <- c("month","avg_price")
+
+# Convert month to Date class
+series$month <- as.Date.character(paste("01",series$month),format="%d %b %Y")
+
+# Sort the data by ascending month
+series <- series[order(series$month),]
+
+# Create a time series object of the monthly data but exclude the last 12 months
+price <- ts(series$avg_price,frequency=12,start=c(2001,1)) %>% window(end=c(2019,12))
+
+# Plot the time series
+autoplot(price) +
+  labs(x="Year",y="Avg. Price (cents per kilawatthour)") +
+  ggtitle("Average Electricity Prices for the Pacific Contiguous Region") +
+  theme(plot.title = element_text(hjust = 0.5,size=15))
+```
+
+From this plot it looks like the variance is fairly stable.  However, we can see both a pronounced upward trend as well as a seasonal pattern, which indicate that the series is not stationary.
+
+## Create a training data set, and hold out the last 24 months of data for testing
+
+```{r}
+train <- window(price, start=c(2001,1), end=c(2017,12))
+test <- window(price, start=c(2018,1))
+```
+
+Now, run the **ndiffs** and **nsdiffs** functions on the training set to determine the number of differences suggested to stabilize the mean and make the series stationary.
+
+```{r}
+ndiffs(train)
+nsdiffs(diff(train))
+```
+
+Based upon the output from the **ndiffs** and **nsdiffs** functions, it looks like a first difference along with a difference at lag 12 would be needed to make the series stationary.  So, we apply these differences and produce the time series, ACF, and PACF plots for the differenced series.
+
+```{r train_diff_plt}
+# Differnce the series
+diff1 <- diff(train)
+diff1_12 <- diff(diff1,lag=12)
+
+# Create plots for the differenced data
+ggtsdisplay(diff1_12)
+```
+
+The time series plot looks more or less stationary.  Since the ACF drops off sharply at lag 1, and the PACF decays more slowly, it looks as though a non-seasonal MA(1) term might be indicated.  Also, since the ACF has a pronounced spike at lag 12, but is below the threshold at lags 24 and 36, while the PACF drops off more slowly at these seasonal lags, a seasonal MA(1) might also be appropriate.  Putting these pieces of information together, it appears that an ARIMA(0,1,1)(0,1,1)<sub>12</sub> model might be a good fit for this series.
+
+## Use the auto.arima function to find the best models for the AIC, AICc, and BIC information criterion
+
+Use auto.arima to run through all possible orders with d=1 and D=1 up to ARIMA(4,1,4)(2,1,2)<sub>12</sub> to find the best models based upon the AICc, AIC, and BIC information criterion.
+
+``` {r}
+# Find the model that minimizes AICc
+Arimafit1 <- auto.arima(train, d=1, D=1, ic="aicc", max.p=4, max.q=4, max.order=14, stepwise=F, approximation=F)
+summary(Arimafit1)
+
+# Find the model that minimizes AIC
+Arimafit2 <- auto.arima(train, d=1, D=1, ic="aic", max.p=4, max.q=4, max.order=14, stepwise=F, approximation=F)
+summary(Arimafit2)
+
+# Find the model that minimizes BIC
+Arimafit3 <- auto.arima(train, d=1, D=1, ic="bic", max.p=4, max.q=4, max.order=14, stepwise=F, approximation=F)
+summary(Arimafit3)
+```
+
+The model which minimized the AICc and AIC was found to be an ARIMA(1,1,1)(0,1,1)<sub>12</sub> model, while the model that minimized the BIC was ARIMA(0,1,1)(0,1,1)<sub>12</sub> (which coincides with the model identified earlier based upon the ACF and PACF patterns).
+
+## Create a function to check residuals, and calculate forecast accuracy metrics on the test data for a given ARIMA model fit
+```{r}
+ARIMA_checks <- function(fit){
+  checkresiduals(fit)
+  accuracy(forecast(fit,h=length(test)),test)
+}
+```
+
+Perform checks for the two ARIMA models identified above.
+```{r ARIMA1_checks}
+ARIMA_checks(Arimafit1)
+```
+
+```{r ARIMA3_checks}
+ARIMA_checks(Arimafit3)
+```
+
+Both models fit the training data pretty well.  The residuals for both series appear to be white noise, and the the forecast accuracy metrics are comparable for the two models.
+
+Now, perform the same checks for the benchmark model of ARIMA(0,1,0)(0,1,0)<sub>12</sub> to compare its performance against the two ARIMA models identified above.
+```{r bench_checks}
+bench <- Arima(train,order=c(0,1,0),seasonal=c(0,1,0))
+ARIMA_checks(bench)
+```
+
+Based upon the diagnostic plots, Ljung-Box test, and forecast accuracy metrics, we can see that the two ARIMA models identified earlier both fit the data better than the benchmark model.
+
+## Choose the best model, and produce a forecast with prediction intervals for the next 12 months
+
+Since both the ARIMA(1,1,1)(0,1,1)<sub>12</sub> and ARIMA(0,1,1)(0,1,1)<sub>12</sub> models have excellent diagnostics and perform similarly well on the test set, we choose the ARIMA(0,1,1)(0,1,1)<sub>12</sub> model for forecasting as it is the more parsimonious of the two.
+
+```{r final}
+# Fit the best model to all of the data
+best <- Arima(price, order=c(0,1,1), seasonal=c(0,1,1))
+
+# List the forecast
+forecast(best,h=12)
+
+# Plot the forecast
+autoplot(forecast(best,h=12)) +
+  labs(x="Year",y="Avg. Price (cents per kilawatthour)") +
+  theme(plot.title = element_text(hjust = 0.5,size=15))
+```
+
+
+## References
+
+Hyndman, R.J., & Athanasopoulos, G. (2018) Forecasting: principles and practice, 2nd edition, OTexts: Melbourne, Australia. OTexts.com/fpp2. Accessed on 04Jan2021.
+
+Hyndman R, Athanasopoulos G, Bergmeir C, Caceres G, Chhay L, O'Hara-Wild M, Petropoulos F,Razbash S, Wang E, Yasmeen F (2020). _forecast: Forecasting functions for time series and linear models_. R package version 8.13, <URL: https://pkg.robjhyndman.com/forecast/>.
+
+Hyndman RJ, Khandakar Y (2008). “Automatic time series forecasting: the forecast package for R.” _Journal of Statistical Software_, *26*(3), 1-22. <URL: https://www.jstatsoft.org/article/view/v027i03>.
