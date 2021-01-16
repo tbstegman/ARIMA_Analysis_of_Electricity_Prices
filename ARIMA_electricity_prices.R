@@ -1,4 +1,4 @@
-# Load the tidyverse and forecast libraries
+# Load the tidyverse and forecast packages
 library(tidyverse)
 library(forecast)
 
