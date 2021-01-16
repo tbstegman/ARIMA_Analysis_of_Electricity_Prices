@@ -7,7 +7,7 @@ The purpose of this projects is to explore the use of Autoregressive
 Integrated Moving Average (ARIMA) models to forecast the monthly average
 electricity prices for the Pacific Contiguous Region.
 
-## Load the tidyverse and forecast libraries
+## Load the tidyverse and forecast packages
 
 ``` r
 library(tidyverse)
