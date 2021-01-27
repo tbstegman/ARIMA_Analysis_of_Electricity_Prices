@@ -114,7 +114,7 @@ ARIMA_checks(Arimafit1)
 ARIMA_checks(Arimafit3)
 ```
 
-Both models fit the training data pretty well.  The residuals for both series appear to be white noise, and the the forecast accuracy metrics are comparable for the two models.
+Both models fit the training data pretty well.  The residuals for both series appear to be white noise, and the forecast accuracy metrics are comparable for the two models.
 
 Now, perform the same checks for the benchmark model of ARIMA(0,1,0)(0,1,0)<sub>12</sub> to compare its performance against the two ARIMA models identified above.
 ```{r bench_checks}
