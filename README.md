@@ -237,7 +237,7 @@ ARIMA_checks(Arimafit3)
     ## Test set     -0.26243067 0.3405676
 
 Both models fit the training data pretty well. The residuals for both
-series appear to be white noise, and the the forecast accuracy metrics
+series appear to be white noise, and the forecast accuracy metrics
 are comparable for the two models.
 
 Now, perform the same checks for the benchmark model of
