@@ -98,7 +98,7 @@ off sharply at lag 1, and the PACF decays more slowly, it looks as
 though a non-seasonal MA(1) term might be indicated. Also, since the ACF
 has a pronounced spike at lag 12, but is below the threshold at lags 24
 and 36, while the PACF drops off more slowly at these seasonal lags, a
-seasonal MA(1) might also be appropriate. Putting these pieces of
+seasonal MA(1) term might also be appropriate. Putting these pieces of
 information together, it appears that an
 ARIMA(0,1,1)(0,1,1)<sub>12</sub> model might be a good fit for this
 series.
