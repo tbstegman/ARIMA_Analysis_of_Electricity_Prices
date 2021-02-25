@@ -103,11 +103,11 @@ information together, it appears that an
 ARIMA(0,1,1)(0,1,1)<sub>12</sub> model might be a good fit for this
 series.
 
-## Use the auto.arima function to find the best models for the AIC, AICc, and BIC information criterion
+## Use the auto.arima function to find the best models for the AIC, AICc, and BIC information criteria
 
 Use auto.arima to run through all possible orders with d=1 and D=1 up to
 ARIMA(4,1,4)(2,1,2)<sub>12</sub> to find the best models based upon the
-AICc, AIC, and BIC information criterion.
+AICc, AIC, and BIC.
 
 ``` r
 # Find the model that minimizes AICc
